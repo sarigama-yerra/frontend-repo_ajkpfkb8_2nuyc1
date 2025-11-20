@@ -25,26 +25,28 @@ export default function AuthForm({ baseUrl, onAuthed }) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         })
-        if (!res.ok) throw new Error((await res.json()).detail || 'Sign up failed')
-        const data = await res.json()
+        const data = await res.json().catch(()=>({}))
+        if (!res.ok) throw new Error(data?.detail || 'Sign up failed')
         localStorage.setItem('token', data.access_token)
         onAuthed(data.access_token)
       } else {
-        const params = new URLSearchParams()
-        params.append('username', form.username.trim())
-        params.append('password', form.password)
+        // Send JSON to match backend /auth/login (expects username, password)
+        const payload = {
+          username: form.username.trim(),
+          password: form.password,
+        }
         const res = await fetch(`${baseUrl}/auth/login`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: params.toString()
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
         })
-        if (!res.ok) throw new Error((await res.json()).detail || 'Login failed')
-        const data = await res.json()
+        const data = await res.json().catch(()=>({}))
+        if (!res.ok) throw new Error(data?.detail || 'Login failed')
         localStorage.setItem('token', data.access_token)
         onAuthed(data.access_token)
       }
     } catch (err) {
-      setError(err.message)
+      setError(err.message || 'Something went wrong')
     } finally {
       setLoading(false)
     }
