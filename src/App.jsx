@@ -4,18 +4,38 @@ import PostComposer from './components/PostComposer'
 import Feed from './components/Feed'
 
 function App() {
-  const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'
+  // Compute backend URL robustly for both local dev and hosted preview
+  const computedBaseUrl = useMemo(() => {
+    const envUrl = import.meta.env.VITE_BACKEND_URL
+    if (envUrl && typeof envUrl === 'string' && envUrl.trim().length > 0) {
+      return envUrl
+    }
+    // If running on the hosted preview, derive backend URL by swapping -3000 with -8000 in the host
+    if (typeof window !== 'undefined') {
+      const { protocol, host } = window.location
+      // Example host pattern: ta-xxxx-3000....modal.host -> ta-xxxx-8000....modal.host
+      if (host.includes('-3000.')) {
+        const backendHost = host.replace('-3000.', '-8000.')
+        return `${protocol}//${backendHost}`
+      }
+    }
+    // Fallback for local dev
+    return 'http://localhost:8000'
+  }, [])
+
+  const baseUrl = computedBaseUrl
+
   const [token, setToken] = useState(typeof window !== 'undefined' ? localStorage.getItem('token') : null)
   const [me, setMe] = useState(null)
 
   useEffect(()=>{
-    const t = localStorage.getItem('token')
+    const t = typeof window !== 'undefined' ? localStorage.getItem('token') : token
     if (!t) return
     fetch(`${baseUrl}/auth/me`, { headers: { 'Authorization': `Bearer ${t}` } })
       .then(res => res.ok ? res.json() : null)
       .then(data => setMe(data))
       .catch(()=>{})
-  }, [token])
+  }, [token, baseUrl])
 
   const handleAuthed = (tok) => {
     setToken(tok)
